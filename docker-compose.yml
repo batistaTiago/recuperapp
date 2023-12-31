@@ -19,7 +19,6 @@ services:
             - recuperapp-network
         volumes:
             - ./:/var/www/html
-            - /var/www/html/vendor
         depends_on:
             - mysql
             - redis

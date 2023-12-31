@@ -14,4 +14,7 @@ RUN php artisan octane:install --server=swoole
 
 RUN chmod -R 777 storage/
 
+RUN groupadd --force -g 1000 sail
+RUN useradd -ms /bin/bash --no-user-group -g 1000 -u 1337 sail
+
 EXPOSE 9000
