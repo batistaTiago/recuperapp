@@ -1,0 +1,106 @@
+version: '3'
+
+networks:
+    recuperapp-network:
+
+volumes:
+    mysql_data:
+        driver: local
+    redis_data:
+        driver: local
+
+services:
+    recuperapp:
+        build:
+            context: .
+            args:
+                INSTALL_XDEBUG: "${INSTALL_XDEBUG:-true}"
+        networks:
+            - recuperapp-network
+        volumes:
+            - ./:/var/www/html
+            - /var/www/html/vendor
+        depends_on:
+            - mysql
+            - redis
+        environment:
+            DB_HOST: mysql
+            REDIS_HOST: redis
+            QUEUE_CONNECTION: redis
+            TELESCOPE_ENABLED: true
+            LOG_CHANNEL: '${LOG_CHANNEL:-stderr}'
+        restart: always
+
+    api:
+        extends:
+            service: recuperapp
+        ports:
+            - "9098:9000"
+        command: php artisan octane:start --host=0.0.0.0 --port=9000 --server=swoole
+
+    worker:
+        extends:
+            service: recuperapp
+        command: php artisan horizon
+        environment:
+            LOG_CHANNEL: stderr
+
+    mysql:
+        image: mysql:5.7.22
+        restart: unless-stopped
+        networks:
+            - recuperapp-network
+        tty: true
+        ports:
+            - "3306:3306"
+        volumes:
+            - mysql_data:/var/lib/mysql
+        environment:
+            MYSQL_DATABASE: recuperapp
+            MYSQL_USER: root
+            MYSQL_PASSWORD: root
+            MYSQL_ROOT_PASSWORD: root
+
+    redis:
+        image: redis
+        networks:
+            - recuperapp-network
+        restart: always
+        ports:
+            - 6380:6379
+        volumes:
+            - redis_data:/data
+#            - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+#        command: redis-server /usr/local/etc/redis/redis.conf
+
+    locust_base:
+        build:
+            context: ./locust
+        environment:
+            FILE_NAME: film_picking/film_scrolling_simulation_load_test.py
+        working_dir: /mnt/locust
+        restart: always
+        networks:
+            - recuperapp-network
+        volumes:
+            - ./locust:/mnt/locust
+
+    locust_master:
+        extends:
+            service: locust_base
+        ports:
+            - "8089:8089"
+        command:
+            - -f
+            - /mnt/locust/locustfile.py
+            - --master
+            - --host=http://api:9000
+            - --users=100
+            - --spawn-rate=1
+
+    locust_worker:
+        extends:
+            service: locust_base
+        depends_on:
+            - locust_master
+        command: -f /mnt/locust/locustfile.py --worker --master-host locust_master
