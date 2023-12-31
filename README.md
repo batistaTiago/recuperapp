@@ -36,3 +36,8 @@ VERSION=v2 && \
 ```
 docker build . -t ekyidag/recuperapp -f ./Dockerfile
 ```
+
+### Add this to .bashrc to enable easier sail access
+```
+alias sail='vendor/bin/sail'
+```
