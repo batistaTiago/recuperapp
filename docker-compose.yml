@@ -35,8 +35,7 @@ services:
             service: recuperapp
         ports:
             - "9098:9000"
-        command: php artisan serve --host=0.0.0.0 --port=9000
-        # command: php artisan octane:start --host=0.0.0.0 --port=9000 --server=swoole
+        command: php artisan octane:start --host=0.0.0.0 --port=9000 --server=swoole --watch
 
     worker:
         extends:
